@@ -1,0 +1,74 @@
+Practical Machine Learning Course Project 
+========================================================
+
+The goal of this project is to predict the manner in which they did the exercise. Due to the limit of the available time and new to the RStudio, I have decided to test RandomForest algorithm first, and will add and compare with other algorithms later. 
+
+Load required libraries and set seed for reproducibility
+
+```{r}
+library(caret)
+library(rpart)
+library(randomForest)
+set.seed(1234)
+```
+
+Read data files and make training and validation data sets.
+(1) Assume the data files are in current working directory.
+(2) 60% for training and 40% for validation - since the data is big enough.
+
+```{r}
+rm(list=ls())
+fileTraining <- "C:/Users/TeddyKo/R_working/pml-training.csv"
+trainingCSV = read.csv(fileTraining,na.strings=c("NA",""), header=TRUE)
+inTrain <- createDataPartition(trainingCSV$classe, p=0.60,list=FALSE)
+training <- trainingCSV[inTrain, ]
+validation <- trainingCSV[-inTrain, ]
+```
+
+Create summary and view the top few records
+
+```{r}
+## summary(training)
+## head(training)
+```
+
+Some of the columns have no data, it might not be productive to use them as-is. Therefore filtering out fields with a lot of (more than 60%) null values.
+
+```{r}
+goodVars <- c((colSums(is.na(training[,-160])) >= 0.4*nrow(training)),160)
+training <- training[,goodVars]
+dim(training)
+validation<-validation[,goodVars]
+dim(validation)
+training<-training[complete.cases(training),]
+dim(training)
+```
+
+Train the model using RandomForest on the training data set.
+
+```{r}
+model <- randomForest(classe ~ ., data=training)
+print(model)
+```
+
+Evaluate the model on the evaluation dataset.
+
+```{r}
+confusionMatrix(predict(model,newdata=validation[,-ncol(validation)]), validation$classe)
+accurate <- c(as.numeric(predict(model,newdata=validation[,-ncol(validation)])==validation$classe))
+accuracy <- sum(accurate)*100/nrow(validation)
+message("Model Accuracy using Validation set = " , format(round(accuracy, 2), nsmall = 2), "%")
+```
+
+Predict the class values in the testing set with 20 observations
+
+```{r}
+fileTesting <- "C:/Users/TeddyKo/R_working/pml-testing.csv"
+testing = read.csv(fileTesting, na.strings=c("NA",""), header=TRUE)
+dim(testing)
+testing <- testing[,goodVars]
+dim(testing)
+predictions <- predict(model,newdata=testing)
+predictions
+```
+
